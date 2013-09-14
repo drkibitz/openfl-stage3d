@@ -1,5 +1,5 @@
 /****
-* 
+*
 ****/
 
 package flash.display3D;
@@ -48,11 +48,12 @@ import flash.geom.Rectangle;
 import openfl.gl.GL;
 import openfl.gl.GLFramebuffer;
 import openfl.gl.GLProgram;
+import openfl.gl.GLUniformLocation;
 import flash.utils.ByteArray;
 import flash.Lib;
 import flash.Vector;
 
-class Context3D 
+class Context3D
 {
    public var driverInfo(default, null):String; // TODO
    public var enableErrorChecking:Bool; // TODO   ( use GL.getError() and GL.validateProgram(program) )
@@ -78,10 +79,10 @@ class Context3D
 
     private var tmpFrameBuffer : GLFramebuffer;
 
-    private var boundTextures : Map<Int,TextureBase>;
-    private var samplerParameters : Map<Int,Array<Dynamic>>; //TODO : use Tupple3
+    private var boundTextures : Map<GLUniformLocation,TextureBase>;
+    private var samplerParameters : Map<GLUniformLocation,Array<Dynamic>>; //TODO : use Tupple3
 
-   public function new() 
+   public function new()
    {
         disposed = false;
         vertexBuffersCreated = new Array();
@@ -101,9 +102,9 @@ class Context3D
       stage.addChildAt(ogl, 0);
    }
 
-   public function clear(red:Float = 0, green:Float = 0, blue:Float = 0, alpha:Float = 1, depth:Float = 1, stencil:Int = 0, mask:Int = Context3DClearMask.ALL):Void 
+   public function clear(red:Float = 0, green:Float = 0, blue:Float = 0, alpha:Float = 1, depth:Float = 1, stencil:Int = 0, mask:Int = Context3DClearMask.ALL):Void
    {
-      if (!drawing) 
+      if (!drawing)
       {
          updateBlendStatus();
          drawing = true;
@@ -117,7 +118,7 @@ class Context3D
       GL.clear(mask);
    }
 
-   public function configureBackBuffer(width:Int, height:Int, antiAlias:Int, enableDepthAndStencil:Bool = true):Void 
+   public function configureBackBuffer(width:Int, height:Int, antiAlias:Int, enableDepthAndStencil:Bool = true):Void
    {
         if (enableDepthAndStencil)
         {
@@ -131,35 +132,35 @@ class Context3D
       ogl.scrollRect = new Rectangle(0, 0, width, height);
    }
 
-   public function createCubeTexture(size:Int, format:Context3DTextureFormat, optimizeForRenderToTexture:Bool, streamingLevels:Int = 0):CubeTexture 
+   public function createCubeTexture(size:Int, format:Context3DTextureFormat, optimizeForRenderToTexture:Bool, streamingLevels:Int = 0):CubeTexture
    {
         var texture = new flash.display3D.textures.CubeTexture (GL.createTexture (), size);     // TODO use format, optimizeForRenderToTexture and  streamingLevels?
         texturesCreated.push(texture);
         return texture;
    }
 
-   public function createIndexBuffer(numIndices:Int):IndexBuffer3D 
+   public function createIndexBuffer(numIndices:Int):IndexBuffer3D
    {
       var indexBuffer = new IndexBuffer3D(GL.createBuffer(), numIndices);
         indexBuffersCreated.push(indexBuffer);
         return indexBuffer;
    }
 
-   public function createProgram():Program3D 
+   public function createProgram():Program3D
    {
       var program = new Program3D(GL.createProgram());
         programsCreated.push(program);
         return program;
    }
 
-   public function createTexture(width:Int, height:Int, format:Context3DTextureFormat, optimizeForRenderToTexture:Bool, streamingLevels:Int = 0):flash.display3D.textures.Texture 
+   public function createTexture(width:Int, height:Int, format:Context3DTextureFormat, optimizeForRenderToTexture:Bool, streamingLevels:Int = 0):flash.display3D.textures.Texture
    {
        var texture = new flash.display3D.textures.Texture (GL.createTexture (), width, height);     // TODO use format, optimizeForRenderToTexture and  streamingLevels?
        texturesCreated.push(texture);
         return texture;
    }
 
-   public function createVertexBuffer(numVertices:Int, data32PerVertex:Int):VertexBuffer3D 
+   public function createVertexBuffer(numVertices:Int, data32PerVertex:Int):VertexBuffer3D
    {
       var vertexBuffer = new VertexBuffer3D(GL.createBuffer(), numVertices, data32PerVertex);
         vertexBuffersCreated.push(vertexBuffer);
@@ -168,7 +169,7 @@ class Context3D
 
    // TODO simulate context loss by recreating a context3d and dispatch event on Stage3d(see Adobe Doc)
     // TODO add error on other method when context3d is disposed
-   public function dispose():Void 
+   public function dispose():Void
    {
         for(vertexBuffer in vertexBuffersCreated)
         {
@@ -206,25 +207,25 @@ class Context3D
         disposed = true;
    }
 
-   public function drawToBitmapData(destination:BitmapData):Void 
+   public function drawToBitmapData(destination:BitmapData):Void
    {
       // TODO
    }
 
-   public function drawTriangles(indexBuffer:IndexBuffer3D, firstIndex:Int = 0, numTriangles:Int = -1):Void 
+   public function drawTriangles(indexBuffer:IndexBuffer3D, firstIndex:Int = 0, numTriangles:Int = -1):Void
    {
-      if (!drawing) 
+      if (!drawing)
       {
          throw new Error("Need to clear before drawing if the buffer has not been cleared since the last present() call.");
       }
 
       var numIndices;
 
-      if (numTriangles == -1) 
+      if (numTriangles == -1)
       {
          numIndices = indexBuffer.numIndices;
 
-      } else 
+      } else
       {
          numIndices = numTriangles * 3;
       }
@@ -233,16 +234,16 @@ class Context3D
       GL.drawElements(GL.TRIANGLES, numIndices, GL.UNSIGNED_SHORT, firstIndex);
    }
 
-   public function present():Void 
+   public function present():Void
    {
       drawing = false;
       GL.useProgram(null);
-	  
+
 	  GL.bindBuffer(GL.ARRAY_BUFFER, null);
    }
 
    // TODO: Type as Context3DBlendFactor instead of Int?
-   public function setBlendFactors(sourceFactor:Int, destinationFactor:Int):Void 
+   public function setBlendFactors(sourceFactor:Int, destinationFactor:Int):Void
    {
       blendEnabled = true;
       blendSourceFactor = sourceFactor;
@@ -251,13 +252,13 @@ class Context3D
       updateBlendStatus();
    }
 
-   public function setColorMask(red:Bool, green:Bool, blue:Bool, alpha:Bool):Void 
+   public function setColorMask(red:Bool, green:Bool, blue:Bool, alpha:Bool):Void
    {
       GL.colorMask(red, green, blue, alpha);
    }
 
    // TODO: Type as Context3DTriangleFace instead of Int?
-   public function setCulling(triangleFaceToCull:Int):Void 
+   public function setCulling(triangleFaceToCull:Int):Void
    {
       if (triangleFaceToCull == Context3DTriangleFace.NONE)
       {
@@ -270,17 +271,17 @@ class Context3D
    }
 
    // TODO: Type as Context3DCompareMode insteaad of Int?
-   public function setDepthTest(depthMask:Bool, passCompareMode:Int):Void 
+   public function setDepthTest(depthMask:Bool, passCompareMode:Int):Void
    {
       GL.depthFunc(passCompareMode);
       GL.depthMask(depthMask);
    }
 
-   public function setProgram(program3D:Program3D):Void 
+   public function setProgram(program3D:Program3D):Void
    {
       var glProgram:GLProgram = null;
 
-      if (program3D != null) 
+      if (program3D != null)
       {
          glProgram = program3D.glProgram;
       }
@@ -293,11 +294,11 @@ class Context3D
 
     private function getUniformLocationNameFromAgalRegisterIndex(programType : Context3DProgramType, firstRegister : Int) : String
     {
-      if (programType == Context3DProgramType.VERTEX) 
+      if (programType == Context3DProgramType.VERTEX)
       {
          return "vc";
 
-      } else if (programType == Context3DProgramType.FRAGMENT) 
+      } else if (programType == Context3DProgramType.FRAGMENT)
       {
          return "fc";
       }
@@ -305,7 +306,7 @@ class Context3D
         throw "Program Type " + programType + " not supported";
     }
 
-    public function setProgramConstantsFromByteArray(programType:Context3DProgramType, firstRegister:Int, numRegisters:Int, data:ByteArray, byteArrayOffset:Int):Void 
+    public function setProgramConstantsFromByteArray(programType:Context3DProgramType, firstRegister:Int, numRegisters:Int, data:ByteArray, byteArrayOffset:Int):Void
     {
         data.position = byteArrayOffset;
         for(i in 0...numRegisters)
@@ -315,13 +316,13 @@ class Context3D
         }
    }
 
-   public function setProgramConstantsFromMatrix(programType:Context3DProgramType, firstRegister:Int, matrix:Matrix3D, transposedMatrix:Bool = false):Void 
+   public function setProgramConstantsFromMatrix(programType:Context3DProgramType, firstRegister:Int, matrix:Matrix3D, transposedMatrix:Bool = false):Void
    {
       var locationName = getUniformLocationNameFromAgalRegisterIndex(programType, firstRegister);
       setGLSLProgramConstantsFromMatrix(locationName,matrix,transposedMatrix);
    }
 
-   public function setProgramConstantsFromVector(programType:Context3DProgramType, firstRegister:Int, data:Vector<Float>, numRegisters:Int = -1):Void 
+   public function setProgramConstantsFromVector(programType:Context3DProgramType, firstRegister:Int, data:Vector<Float>, numRegisters:Int = -1):Void
    {
         for(i in 0...numRegisters)
         {
@@ -331,7 +332,7 @@ class Context3D
         }
    }
 
-    public function setGLSLProgramConstantsFromByteArray(locationName : String, data:ByteArray, byteArrayOffset : Int = -1):Void 
+    public function setGLSLProgramConstantsFromByteArray(locationName : String, data:ByteArray, byteArrayOffset : Int = -1):Void
     {
         if (byteArrayOffset != -1)
         {
@@ -341,15 +342,15 @@ class Context3D
         GL.uniform4f(location, data.readFloat(),data.readFloat(),data.readFloat(),data.readFloat());
     }
 
-    public function setGLSLProgramConstantsFromMatrix(locationName : String, matrix:Matrix3D, transposedMatrix:Bool = false):Void 
+    public function setGLSLProgramConstantsFromMatrix(locationName : String, matrix:Matrix3D, transposedMatrix:Bool = false):Void
     {
-        var location = GL.getUniformLocation(currentProgram.glProgram, locationName);
+        var location:GLUniformLocation = GL.getUniformLocation(currentProgram.glProgram, locationName);
         GL.uniformMatrix3D(location, !transposedMatrix, matrix);
     }
 
-    public function setGLSLProgramConstantsFromVector4(locationName : String, data:Vector<Float>, startIndex : Int = 0):Void 
+    public function setGLSLProgramConstantsFromVector4(locationName : String, data:Vector<Float>, startIndex : Int = 0):Void
     {
-        var location = GL.getUniformLocation(currentProgram.glProgram, locationName);
+        var location:GLUniformLocation = GL.getUniformLocation(currentProgram.glProgram, locationName);
         GL.uniform4f(location, data[startIndex],data[startIndex+1],data[startIndex+1],data[startIndex+3]);
     }
 
@@ -430,7 +431,7 @@ class Context3D
 
    public function setGLSLSamplerStateAt(locationName:String, wrap:Context3DWrapMode, filter:Context3DTextureFilter, mipfilter:Context3DMipFilter):Void
    {
-        var location = GL.getUniformLocation (currentProgram.glProgram, locationName);
+        var location:GLUniformLocation = GL.getUniformLocation (currentProgram.glProgram, locationName);
 
 
         samplerParameters.set(location,[wrap,filter,mipfilter]);
@@ -488,18 +489,18 @@ class Context3D
         }
    }
 
-   public function setScissorRectangle(rectangle:Rectangle):Void 
+   public function setScissorRectangle(rectangle:Rectangle):Void
    {
         // TODO test it
         GL.scissor(Std.int(rectangle.x), Std.int(rectangle.y), Std.int(rectangle.width), Std.int(rectangle.height));
    }
 
-   public function setStencilActions(?triangleFace:Context3DTriangleFace, ?compareMode:Context3DCompareMode, ?actionOnBothPass:Context3DStencilAction, ?actionOnDepthFail:Context3DStencilAction, ?actionOnDepthPassStencilFail:Context3DStencilAction):Void 
+   public function setStencilActions(?triangleFace:Context3DTriangleFace, ?compareMode:Context3DCompareMode, ?actionOnBothPass:Context3DStencilAction, ?actionOnDepthFail:Context3DStencilAction, ?actionOnDepthPassStencilFail:Context3DStencilAction):Void
    {
       // TODO
    }
 
-   public function setStencilReferenceValue(referenceValue:Int, readMask:Int = 0xFF, writeMask:Int = 0xFF):Void 
+   public function setStencilReferenceValue(referenceValue:Int, readMask:Int = 0xFF, writeMask:Int = 0xFF):Void
    {
       // TODO
    }
@@ -512,7 +513,7 @@ class Context3D
 
 	public function setGLSLTextureAt (locationName:String, texture:TextureBase, textureIndex : Int):Void {
 
-        var location = GL.getUniformLocation (currentProgram.glProgram, locationName);
+        var location:GLUniformLocation = GL.getUniformLocation (currentProgram.glProgram, locationName);
 
 		if (Std.is (texture, flash.display3D.textures.Texture)) {
 
@@ -551,15 +552,15 @@ class Context3D
 
 	}
 
-    public function setVertexBufferAt(index:Int,buffer:VertexBuffer3D, bufferOffset:Int = 0, ?format:Context3DVertexBufferFormat):Void 
+    public function setVertexBufferAt(index:Int,buffer:VertexBuffer3D, bufferOffset:Int = 0, ?format:Context3DVertexBufferFormat):Void
     {
         var locationName = "va" + index;
         setGLSLVertexBufferAt(locationName, buffer, bufferOffset, format);
     }
 
-   public function setGLSLVertexBufferAt(locationName, buffer:VertexBuffer3D, bufferOffset:Int = 0, ?format:Context3DVertexBufferFormat):Void 
+   public function setGLSLVertexBufferAt(locationName, buffer:VertexBuffer3D, bufferOffset:Int = 0, ?format:Context3DVertexBufferFormat):Void
    {
-      var location = GL.getAttribLocation(currentProgram.glProgram,locationName);
+      var location:Int = GL.getAttribLocation(currentProgram.glProgram,locationName);
 
         GL.bindBuffer(GL.ARRAY_BUFFER, buffer.glBuffer);
 
@@ -567,37 +568,37 @@ class Context3D
       var type = GL.FLOAT;
       var numBytes = 4;
 
-      if (format == Context3DVertexBufferFormat.BYTES_4) 
+      if (format == Context3DVertexBufferFormat.BYTES_4)
       {
          dimension = 4;
          type = GL.FLOAT;
          numBytes = 4;
 
-      } else if (format == Context3DVertexBufferFormat.FLOAT_1) 
+      } else if (format == Context3DVertexBufferFormat.FLOAT_1)
       {
          dimension = 1;
          type = GL.FLOAT;
          numBytes = 4;
 
-      } else if (format == Context3DVertexBufferFormat.FLOAT_2) 
+      } else if (format == Context3DVertexBufferFormat.FLOAT_2)
       {
          dimension = 2;
          type = GL.FLOAT;
          numBytes = 4;
 
-      } else if (format == Context3DVertexBufferFormat.FLOAT_3) 
+      } else if (format == Context3DVertexBufferFormat.FLOAT_3)
       {
          dimension = 3;
          type = GL.FLOAT;
          numBytes = 4;
 
-      } else if (format == Context3DVertexBufferFormat.FLOAT_4) 
+      } else if (format == Context3DVertexBufferFormat.FLOAT_4)
       {
          dimension = 4;
          type = GL.FLOAT;
          numBytes = 4;
 
-      } else 
+      } else
       {
          throw "Buffer format " + format + " is not supported";
       }
@@ -607,15 +608,15 @@ class Context3D
    }
 
     //TODO do the same for other states ?
-   private function updateBlendStatus():Void 
+   private function updateBlendStatus():Void
    {
-      if (blendEnabled) 
+      if (blendEnabled)
       {
          GL.enable(GL.BLEND);
          GL.blendEquation(GL.FUNC_ADD);
          GL.blendFunc(blendSourceFactor, blendDestinationFactor);
 
-      } else 
+      } else
       {
          GL.disable(GL.BLEND);
       }
